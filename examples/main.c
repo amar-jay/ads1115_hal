@@ -3,7 +3,9 @@
 
 #include "ads_defs.h"
 #include "stm32f4xx_hal.h" // or your MCU series header
+
 I2C_HandleTypeDef *hi2c1;
+
 int main(void) {
 
   ADS1115_HandleTypeDef ads;
@@ -24,6 +26,14 @@ int main(void) {
     } else {
       printf("Failed to read channel %d\n", i);
     }
+  }
+
+  ads1115_start_continuous(&ads, ADS1115_MUX_P0_NG);
+  while (1) {
+    if (ads1115_read_continuous(&ads, &raw)) {
+      printf("Continuous read Channel 0 raw = %ld\n", (long)raw);
+    }
+    HAL_Delay(1000);
   }
 
   ads1115_hal_deinit(&ads);
