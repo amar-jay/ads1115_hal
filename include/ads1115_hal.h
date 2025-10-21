@@ -10,28 +10,22 @@ extern "C" {
 
 #include "stm32f4xx_hal.h" // or your MCU series header
 
+
 // =======================================================
 // ---------------- STRUCTURE DEFINITIONS ----------------
 // =======================================================
 
-typedef struct {
-  I2C_HandleTypeDef *i2c_handler;
-  uint16_t config;
-  uint16_t pga_coeff;
+typedef struct ADS1115_HandleTypeDef ADS1115_HandleTypeDef;
 
-  // Config methods
-  HAL_StatusTypeDef (*setConfig)(struct ADS1115_HandleTypeDef *ads,
-                                 uint16_t config);
-  uint16_t (*getConfig)(struct ADS1115_HandleTypeDef *ads);
-  void (*setPGA)(struct ADS1115_HandleTypeDef *ads, uint16_t pga);
+struct ADS1115_HandleTypeDef {
+    I2C_HandleTypeDef *i2c_handler;
+    uint16_t config;
+    uint16_t pga_coeff;
 
-  // Conversion methods
-  // HAL_StatusTypeDef (*readSingleEnded)(struct ADS1115_HandleTypeDef *ads,
-  //                                     uint16_t mux, float *mv);
-  // HAL_StatusTypeDef (*setConversionReadyPinMode)(
-  //     struct ADS1115_HandleTypeDef *ads, uint16_t conv);
-
-} ADS1115_HandleTypeDef;
+    HAL_StatusTypeDef (*setConfig)(ADS1115_HandleTypeDef *ads, uint16_t config);
+    uint16_t (*getConfig)(ADS1115_HandleTypeDef *ads);
+    void (*setPGA)(ADS1115_HandleTypeDef *ads, uint16_t pga);
+};
 
 // =======================================================
 // ---------------- FUNCTION PROTOTYPES ------------------
@@ -54,7 +48,7 @@ HAL_StatusTypeDef ads1115_get_conv(ADS1115_HandleTypeDef *ads, uint16_t *conv);
 
 // Single-ended and differential reads
 HAL_StatusTypeDef ads1115_read_raw(ADS1115_HandleTypeDef *ads, uint16_t mux,
-                                   uint8_t raw_buf[2]);
+                                   uint16_t* raw_buf);
 HAL_StatusTypeDef ads1115_read_single_ended(ADS1115_HandleTypeDef *ads,
                                             uint16_t mux, float *mv);
 
