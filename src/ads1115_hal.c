@@ -1,13 +1,13 @@
 /* ads1115_hal.c - thin wrapper around platform ADC driver */
-#include "ads1115_hal.h"
-#include "ads_defs.h"
+#include "ads1115.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+
 float _get_pga_coefficients(uint16_t pga);
 
-static int8_t ads1115_set_config(ADS1115_HandleTypeDef *ads, uint16_t config) {
+HAL_StatusTypeDef ads1115_set_config(ADS1115_HandleTypeDef *ads, uint16_t config) {
   uint8_t buf[2];
   buf[0] = (uint8_t)(config >> 8);
   buf[1] = (uint8_t)(config & 0xFF);
@@ -20,7 +20,7 @@ static int8_t ads1115_set_config(ADS1115_HandleTypeDef *ads, uint16_t config) {
   return HAL_OK;
 }
 
-static uint16_t ads1115_get_config(ADS1115_HandleTypeDef *ads) {
+uint16_t ads1115_get_config(ADS1115_HandleTypeDef *ads) {
   uint8_t buf[2];
 
   if (HAL_I2C_Mem_Read(ads->i2c_handler,
@@ -33,7 +33,7 @@ static uint16_t ads1115_get_config(ADS1115_HandleTypeDef *ads) {
 }
 
 // set to the conversion register
-static int8_t ads1115_set_conv(ADS1115_HandleTypeDef *ads, uint16_t conv) {
+HAL_StatusTypeDef ads1115_set_conv(ADS1115_HandleTypeDef *ads, uint16_t conv) {
   uint8_t buf[2];
   buf[0] = (uint8_t)(conv >> 8);
   buf[1] = (uint8_t)(conv & 0xFF);
@@ -46,7 +46,7 @@ static int8_t ads1115_set_conv(ADS1115_HandleTypeDef *ads, uint16_t conv) {
 }
 
 // fetch from the conversion register
-static int8_t ads1115_get_conv(ADS1115_HandleTypeDef *ads, uint16_t *conv) {
+HAL_StatusTypeDef ads1115_get_conv(ADS1115_HandleTypeDef *ads, uint16_t *conv) {
   uint8_t buf[2];
 
   if (HAL_I2C_Mem_Read(ads->i2c_handler,
@@ -59,7 +59,7 @@ static int8_t ads1115_get_conv(ADS1115_HandleTypeDef *ads, uint16_t *conv) {
 }
 
 HAL_StatusTypeDef ads1115_read_raw(ADS1115_HandleTypeDef *ads, uint16_t mux,
-                                   uint8_t raw_buf[2]) {
+                                   uint16_t* raw_buf) {
   uint16_t config = (ads->config & ~(ADS1115_MUX_MASK | ADS1115_OS_MASK)) |
                     ADS1115_OS(ADS1115_OS_SINGLE) | ADS1115_MUX(mux);
 
@@ -68,16 +68,17 @@ HAL_StatusTypeDef ads1115_read_raw(ADS1115_HandleTypeDef *ads, uint16_t mux,
   if (ret != HAL_OK) {
     return ret;
   }
+  uint8_t retries = 0;
 
   do {
-    uint16_t status_buf;
-    ret = ads1115_get_config(ads, &status_buf);
-    if (status_buf & (ADS1115_OS(ADS1115_OS_SINGLE)))
-      break;
+	  retries++;
+	  uint16_t status_buf = ads1115_get_config(ads);
+	  if (status_buf & (ADS1115_OS(ADS1115_OS_SINGLE)))
+		  break;
   } while (retries < MAX_RETRIES); // wait until OS=1 (conversion complete)
 
   // Read conversion result
-  if (ads1115_get_conv(hi2c, raw_buf) != HAL_OK)
+  if (ads1115_get_conv(ads, raw_buf) != HAL_OK)
     return HAL_ERROR;
 
   return HAL_OK;
@@ -86,12 +87,12 @@ HAL_StatusTypeDef ads1115_read_raw(ADS1115_HandleTypeDef *ads, uint16_t mux,
 HAL_StatusTypeDef ads1115_read_single_ended(ADS1115_HandleTypeDef *ads,
                                             uint16_t mux, float *mv) {
 
-  uint8_t raw_buf[2];
-  if (ads1115_read_raw(ads, mux, raw_buf) != HAL_OK)
+  uint16_t raw_buf;
+  if (ads1115_read_raw(ads, mux, &raw_buf) != HAL_OK)
     return HAL_ERROR;
 
   // convert_raw_to_mv
-  *mv = ((raw_buf[0] << 8) | raw_buf[1]) *
+  *mv = (raw_buf) *
         _get_pga_coefficients(ADS1115_PGA_2_048V);
 
   return HAL_OK;
